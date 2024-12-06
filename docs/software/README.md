@@ -607,3 +607,83 @@ COMMIT;
 
 ## RESTfull сервіс для управління даними
 
+## База даних
+
+```sql
+
+-- Створення таблиці Role
+CREATE TABLE Roles (
+    id SERIAL PRIMARY KEY,             -- Первинний ключ з автоінкрементом
+    name VARCHAR(50) NOT NULL,         -- Назва ролі (наприклад, "Admin", "Editor")
+    can_create_media BOOLEAN NOT NULL  -- Чи може роль створювати медіаконтент
+);
+
+-- Створення таблиці User
+CREATE TABLE Users (
+    id SERIAL PRIMARY KEY,  -- Первинний ключ
+    username VARCHAR(255) NOT NULL UNIQUE, -- Унікальне ім'я користувача
+    email VARCHAR(255) NOT NULL UNIQUE,    -- Унікальна електронна пошта
+    password VARCHAR(255) NOT NULL,        -- Хешований пароль
+    role_id INT NOT NULL,                  -- Зовнішній ключ до Role
+    FOREIGN KEY (role_id) REFERENCES Roles(id) ON DELETE CASCADE
+);
+
+-- Створення таблиці MediaContent
+CREATE TABLE MediaContent (
+    id SERIAL PRIMARY KEY,  -- Первинний ключ
+    title VARCHAR(255) NOT NULL,        -- Назва медіаконтенту
+    content TEXT NOT NULL,              -- Контент (текст, опис тощо)
+    created_by INT NOT NULL,            -- Зовнішній ключ до User (хто створив)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата створення
+    FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE
+);
+
+-- Додавання тестових даних для ролей
+INSERT INTO Roles (name, can_create_media) VALUES 
+('Admin', TRUE),
+('Editor', TRUE),
+('Viewer', FALSE);
+
+-- Додавання користувачів з різними ролями
+INSERT INTO Users (username, email, password, role_id) VALUES 
+('admin_user', 'admin@example.com', 'hashed_password_1', 1),
+('editor_user', 'editor@example.com', 'hashed_password_2', 2),
+('viewer_user', 'viewer@example.com', 'hashed_password_3', 3);
+
+-- Створення функції для перевірки прав доступу
+CREATE OR REPLACE FUNCTION check_media_permission()
+RETURNS TRIGGER AS $$
+DECLARE
+    can_create BOOLEAN;
+BEGIN
+    -- Отримання інформації про права ролі
+    SELECT r.can_create_media INTO can_create
+    FROM Roles r
+    JOIN Users u ON r.id = u.role_id
+    WHERE u.id = NEW.created_by;
+
+    IF NOT can_create THEN
+        RAISE EXCEPTION 'You do not have permission to create media content.';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Створення тригера для перевірки прав перед вставкою
+CREATE TRIGGER before_media_insert
+BEFORE INSERT ON MediaContent
+FOR EACH ROW
+EXECUTE FUNCTION check_media_permission();
+
+-- Приклад додавання медіаконтенту
+-- Це працює тільки для користувачів із відповідними правами
+INSERT INTO MediaContent (title, content, created_by) 
+VALUES ('Sample Content', 'This is a test content.', 1); -- Успішно, бо admin_user має права
+
+INSERT INTO MediaContent (title, content, created_by) 
+VALUES ('Another Content', 'Editor content example.', 2); -- Успішно, бо editor_user має права
+
+
+```
+
