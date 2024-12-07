@@ -6,10 +6,13 @@ import {
   deleteUser,
 } from '../models/User.js';
 
+import { getRoleById } from '../models/Role.js';
+
 export const createUserHandler = async (req, res) => {
   try {
     const { username, email, password, id_role } = req.body;
 
+    // Check for missing fields
     if (!username || !email || !password || !id_role) {
       return res.status(400).json({
         status: 'error',
@@ -18,6 +21,29 @@ export const createUserHandler = async (req, res) => {
       });
     }
 
+    // Check if the user already exists
+    const allUsers = await getAllUsers();
+    const userExists = allUsers.some((user) => user.email === email);
+
+    if (userExists) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'User already exists with the given email',
+        data: null,
+      });
+    }
+
+    // Check if the role exists
+    const role = await getRoleById(id_role);
+    if (!role) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'The specified role does not exist',
+        data: null,
+      });
+    }
+
+    // Create the user
     const user = await createUser(username, email, password, id_role);
     res.status(201).json({
       status: 'success',
@@ -85,22 +111,35 @@ export const updateUserHandler = async (req, res) => {
     const { id } = req.params;
     const fieldsToUpdate = req.body;
 
-    // Check if at least one field is provided for updating
-    if (Object.keys(fieldsToUpdate).length === 0) {
-      return res.status(400).json({
+    // Check if user exists
+    const existingUser = await getUserById(id);
+    if (!existingUser) {
+      return res.status(404).json({
         status: 'error',
-        message: 'At least one field must be provided for update',
+        message: 'User not found',
         data: null,
       });
     }
 
-    // Call the updateUser model with dynamic fields
+    // Check if role exists if id_role is being updated
+    if (fieldsToUpdate.id_role) {
+      const role = await getRoleById(fieldsToUpdate.id_role);
+      if (!role) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'The specified role does not exist',
+          data: null,
+        });
+      }
+    }
+
+    // Perform the update
     const updatedUser = await updateUser(id, fieldsToUpdate);
 
     if (!updatedUser) {
-      return res.status(404).json({
+      return res.status(400).json({
         status: 'error',
-        message: 'User not found',
+        message: 'Failed to update user',
         data: null,
       });
     }

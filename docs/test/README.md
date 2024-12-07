@@ -1,91 +1,101 @@
 # Тестування працездатності системи
 
-Тестування програми у Postman:
+## Тестування програми у Postman:
 
 ## User
 
-## POST api/user
+### POST api/user
 
 <img src="./media/user/post-user.png">
 
-## GET api/user
+### GET api/user
 
 <img src="./media/user/get-users.png">
 
-## GET api/user/:id
+### GET api/user/:id
 
 <img src="./media/user/get-user-by-id.png">
 
-## PATCH api/user/:id
+### PATCH api/user/:id
 
 <img src="./media/user/patch-user.png">
 
-## DELETE api/user/:id
+### DELETE api/user/:id
 
 <img src="./media/user/delete-user.png">
 
 ## Roles
 
-## POST api/roles
+### POST api/roles
 
 <img src="./media/roles/post-role.png">
 
-## GET api/roles
+### GET api/roles
 
 <img src="./media/roles/get-roles.png">
 
-## GET api/roles/:id
+### GET api/roles/:id
 
 <img src="./media/roles/get-role-by-id.png">
 
-## PATCH api/roles/:id
+### PATCH api/roles/:id
 
 <img src="./media/roles/patch-role.png">
 
-## DELETE api/roles/:id
+### DELETE api/roles/:id
 
 <img src="./media/roles/delete-role.png">
 
 ## MediaContent
 
-## POST api/content
+### POST api/content
 
 <img src="./media/mediaContent/post-media.png">
 
-## GET api/content
+### GET api/content
 
 <img src="./media/mediaContent/get-media.png">
 
-## GET api/content/:id
+### GET api/content/:id
 
 <img src="./media/mediaContent/get-media.png">
 
-## PATCH api/content/:id
+### PATCH api/content/:id
 
 <img src="./media/mediaContent/patch-media.png">
 
-## DELETE api/content/:id
+### DELETE api/content/:id
 
 <img src="./media/mediaContent/delete-media.png">
 
 ---
 
-## EXCEPTION(User): DataMissingException
+## Exceptions
 
-<img src="./media/user-DataMissingException.png">
+## User
 
-## EXCEPTION(User): AlreadyRegisteredException
+### User: RoleNotFoundException
 
-<img src="./media/user-AlreadyRegisteredException.png">
+<img src="./media/user/user-RoleNotFoundException.png">
 
-## EXCEPTION(User): UserNotFoundException
+### User: AlreadyExistsException
 
-<img src="./media/user-UserNotFoundException.png">
+<img src="./media/user/user-AlreadyExistsException.png">
 
-## EXCEPTION(MediaContent): RequiredFieldsMissingException
+### User: NotFoundException
 
-<img src="./media/content-RequiredFieldsMissingException.png">
+<img src="./media/user/user-NotFoundException.png">
 
-## EXCEPTION(MediaContent): MediaContentNotFoundException
+## Media
 
-<img src="./media/content-MediaContentNotFoundException.png">
+### Media: DataMissingException
+
+<img src="./media/mediaContent/media-DataMissingException.png">
+
+### Media: UserNotFoundException
+
+<img src="./media/mediaContent/media-UserNotFoundException.png">
+
+### Media: NoPermissionException
+
+<img src="./media/mediaContent/media-NoPermissionException.png">

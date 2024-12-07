@@ -41,7 +41,7 @@ export const createMediaContentHandler = async (req, res) => {
     if (!role.can_create_media) {
       return res.status(403).json({
         status: 'error',
-        message: 'You do not have permission to create media content',
+        message: 'User does not have permission to create media content',
         data: null,
       });
     }
