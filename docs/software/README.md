@@ -611,52 +611,51 @@ COMMIT;
 
 ```sql
 
--- Створення таблиці Role
+-- Creating Roles table
 CREATE TABLE Roles (
-    id SERIAL PRIMARY KEY,             -- Первинний ключ з автоінкрементом
-    name VARCHAR(50) NOT NULL,         -- Назва ролі (наприклад, "Admin", "Editor")
-    can_create_media BOOLEAN NOT NULL  -- Чи може роль створювати медіаконтент
+    id SERIAL PRIMARY KEY,             
+    name VARCHAR(50) NOT NULL,         
+    can_create_media BOOLEAN NOT NULL  
 );
 
--- Створення таблиці User
+-- Creating User table
 CREATE TABLE Users (
-    id SERIAL PRIMARY KEY,  -- Первинний ключ
-    username VARCHAR(255) NOT NULL UNIQUE, -- Унікальне ім'я користувача
-    email VARCHAR(255) NOT NULL UNIQUE,    -- Унікальна електронна пошта
-    password VARCHAR(255) NOT NULL,        -- Хешований пароль
-    role_id INT NOT NULL,                  -- Зовнішній ключ до Role
+    id SERIAL PRIMARY KEY, 
+    username VARCHAR(255) NOT NULL UNIQUE, 
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,       
+    role_id INT NOT NULL,                
     FOREIGN KEY (role_id) REFERENCES Roles(id) ON DELETE CASCADE
 );
 
--- Створення таблиці MediaContent
+-- Creating MediaContent table
 CREATE TABLE MediaContent (
-    id SERIAL PRIMARY KEY,  -- Первинний ключ
-    title VARCHAR(255) NOT NULL,        -- Назва медіаконтенту
-    content TEXT NOT NULL,              -- Контент (текст, опис тощо)
-    created_by INT NOT NULL,            -- Зовнішній ключ до User (хто створив)
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Дата створення
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,       
+    content TEXT NOT NULL,          
+    created_by INT NOT NULL,           
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
     FOREIGN KEY (created_by) REFERENCES Users(id) ON DELETE CASCADE
 );
 
--- Додавання тестових даних для ролей
+-- Inserting data into roles
 INSERT INTO Roles (name, can_create_media) VALUES 
 ('Admin', TRUE),
 ('Editor', TRUE),
 ('Viewer', FALSE);
 
--- Додавання користувачів з різними ролями
+-- Inserting data into users
 INSERT INTO Users (username, email, password, role_id) VALUES 
 ('admin_user', 'admin@example.com', 'hashed_password_1', 1),
 ('editor_user', 'editor@example.com', 'hashed_password_2', 2),
 ('viewer_user', 'viewer@example.com', 'hashed_password_3', 3);
 
--- Створення функції для перевірки прав доступу
+-- Checking permission function
 CREATE OR REPLACE FUNCTION check_media_permission()
 RETURNS TRIGGER AS $$
 DECLARE
     can_create BOOLEAN;
 BEGIN
-    -- Отримання інформації про права ролі
     SELECT r.can_create_media INTO can_create
     FROM Roles r
     JOIN Users u ON r.id = u.role_id
@@ -670,20 +669,671 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Створення тригера для перевірки прав перед вставкою
+-- Creating trigger before inserting
 CREATE TRIGGER before_media_insert
 BEFORE INSERT ON MediaContent
 FOR EACH ROW
 EXECUTE FUNCTION check_media_permission();
 
--- Приклад додавання медіаконтенту
--- Це працює тільки для користувачів із відповідними правами
+-- Inserting data into MediaContent
 INSERT INTO MediaContent (title, content, created_by) 
-VALUES ('Sample Content', 'This is a test content.', 1); -- Успішно, бо admin_user має права
+VALUES ('Sample Content', 'This is a test content.', 1); -- Success, besause user has permission
 
 INSERT INTO MediaContent (title, content, created_by) 
-VALUES ('Another Content', 'Editor content example.', 2); -- Успішно, бо editor_user має права
+VALUES ('Another Content', 'Editor content example.', 2); -- Success, besause user has permission
 
+INSERT INTO MediaContent (title, content, created_by) 
+VALUES ('Another Content', 'Editor content example.', 3); -- Error, besause user has no permission
 
 ```
+
+## Код програми
+
+### Головний app фвйл:
+```js
+import express from 'express';
+import dotenv from 'dotenv';
+import userRoutes from './routes/userRoutes.js';
+import roleRoutes from './routes/roleRoutes.js';
+import mediaRoutes from './routes/mediaRoutes.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/roles', roleRoutes);
+app.use('/api/media', mediaRoutes);
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+```
+
+## DB config file:
+```js
+import dotenv from 'dotenv';
+import pg from 'pg';
+
+dotenv.config();
+const { Pool } = pg;
+
+const pool = new Pool({
+  user: process.env.DB_USER, // Database user
+  host: process.env.DB_HOST, // Database host
+  database: process.env.DB_NAME, // Database name
+  password: process.env.DB_PASSWORD, // Database password
+  port: process.env.DB_PORT, // Database port (default for PostgreSQL is 5432)
+});
+
+export default pool;
+```
+
+## Routers
+
+### mediaRoutes
+```js
+import express from 'express';
+import {
+  createMediaContentHandler,
+  getAllMediaContentsHandler,
+  getMediaContentByIdHandler,
+  updateMediaContentHandler,
+  deleteMediaContentHandler,
+} from '../controllers/mediaController.js';
+
+const router = express.Router();
+
+router.post('/', createMediaContentHandler);
+router.get('/', getAllMediaContentsHandler);
+router.get('/:id', getMediaContentByIdHandler);
+router.put('/:id', updateMediaContentHandler);
+router.delete('/:id', deleteMediaContentHandler);
+
+export default router;
+```
+
+### roleRoutes
+```js
+import express from 'express';
+import {
+  createRoleHandler,
+  getAllRolesHandler,
+  getRoleByIdHandler,
+  updateRoleHandler,
+  deleteRoleHandler,
+} from '../controllers/roleController.js';
+
+const router = express.Router();
+
+router.post('/', createRoleHandler);
+router.get('/', getAllRolesHandler);
+router.get('/:id', getRoleByIdHandler);
+router.put('/:id', updateRoleHandler);
+router.delete('/:id', deleteRoleHandler);
+
+export default router;
+```
+
+### userRoutes
+```js
+import express from 'express';
+import {
+  createUserHandler,
+  getAllUsersHandler,
+  getUserByIdHandler,
+  updateUserHandler,
+  deleteUserHandler,
+} from '../controllers/userController.js';
+
+const router = express.Router();
+
+router.post('/', createUserHandler);
+router.get('/', getAllUsersHandler);
+router.get('/:id', getUserByIdHandler);
+router.put('/:id', updateUserHandler);
+router.delete('/:id', deleteUserHandler);
+
+export default router;
+```
+
+## Controllers
+
+### mediaController
+```js
+import {
+  createMediaContent,
+  getAllMediaContents,
+  getMediaContentById,
+  updateMediaContent,
+  deleteMediaContent,
+} from '../models/MediaContent.js';
+
+export const createMediaContentHandler = async (req, res) => {
+  try {
+    const { title, content, created_by } = req.body;
+
+    if (!title || !content || !created_by) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const mediaContent = await createMediaContent(title, content, created_by);
+    res.status(201).json(mediaContent);
+  } catch (error) {
+    console.error('Error in createMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to create media content' });
+  }
+};
+
+export const getAllMediaContentsHandler = async (req, res) => {
+  try {
+    const mediaContents = await getAllMediaContents();
+    res.status(200).json(mediaContents);
+  } catch (error) {
+    console.error('Error in getAllMediaContentsHandler:', error.message);
+    res.status(500).json({ error: 'Failed to fetch media contents' });
+  }
+};
+
+export const getMediaContentByIdHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const mediaContent = await getMediaContentById(id);
+    if (!mediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(mediaContent);
+  } catch (error) {
+    console.error('Error in getMediaContentByIdHandler:', error.message);
+    res.status(500).json({ error: 'Failed to fetch media content' });
+  }
+};
+
+export const updateMediaContentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res
+        .status(400)
+        .json({ message: 'Title and content are required' });
+    }
+
+    const updatedMediaContent = await updateMediaContent(id, title, content);
+    if (!updatedMediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(updatedMediaContent);
+  } catch (error) {
+    console.error('Error in updateMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to update media content' });
+  }
+};
+
+export const deleteMediaContentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedMediaContent = await deleteMediaContent(id);
+    if (!deletedMediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(deletedMediaContent);
+  } catch (error) {
+    console.error('Error in deleteMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to delete media content' });
+  }
+};
+```
+
+## roleController
+```js
+import {
+  createRole,
+  getAllRoles,
+  getRoleById,
+  updateRole,
+  deleteRole,
+} from '../models/Role.js';
+
+export const createRoleHandler = async (req, res) => {
+  try {
+    const { name, can_create_media } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Role name is required' });
+    }
+    if (typeof can_create_media === 'undefined') {
+      return res.status(400).json({ message: 'can_create_media is required' });
+    }
+
+    const newRole = await createRole(name, can_create_media);
+    res.status(201).json(newRole);
+  } catch (error) {
+    console.error('Error creating role:', error.message);
+    res.status(500).json({ error: 'Failed to create role' });
+  }
+};
+
+export const getAllRolesHandler = async (req, res) => {
+  try {
+    const roles = await getAllRoles();
+    res.status(200).json(roles);
+  } catch (error) {
+    console.error('Error fetching roles:', error.message);
+    res.status(500).json({ error: 'Failed to fetch roles' });
+  }
+};
+
+export const getRoleByIdHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const role = await getRoleById(id);
+    if (!role) {
+      return res.status(404).json({ message: 'Role not found' });
+    }
+
+    res.status(200).json(role);
+  } catch (error) {
+    console.error('Error fetching role by ID:', error.message);
+    res.status(500).json({ error: 'Failed to fetch role' });
+  }
+};
+
+export const updateRoleHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, can_create_media } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Role name is required' });
+    }
+    if (typeof can_create_media === 'undefined') {
+      return res.status(400).json({ message: 'can_create_media is required' });
+    }
+
+    const updatedRole = await updateRole(id, name, can_create_media);
+    if (!updatedRole) {
+      return res.status(404).json({ message: 'Role not found' });
+    }
+
+    res.status(200).json(updatedRole);
+  } catch (error) {
+    console.error('Error updating role:', error.message);
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+};
+
+export const deleteRoleHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedRole = await deleteRole(id);
+    if (!deletedRole) {
+      return res.status(404).json({ message: 'Role not found' });
+    }
+
+    res.status(200).json(deletedRole);
+  } catch (error) {
+    console.error('Error deleting role:', error.message);
+    res.status(500).json({ error: 'Failed to delete role' });
+  }
+};
+```
+
+### userController
+```js
+import {
+  createMediaContent,
+  getAllMediaContents,
+  getMediaContentById,
+  updateMediaContent,
+  deleteMediaContent,
+} from '../models/MediaContent.js';
+
+import { getUserById } from '../models/User.js';
+import { getRoleById } from '../models/Role.js';
+
+export const createMediaContentHandler = async (req, res) => {
+  try {
+    const { title, content, created_by } = req.body;
+
+    if (!title || !content || !created_by) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const user = await getUserById(created_by);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const role = await getRoleById(user.role_id);
+    if (!role) {
+      return res.status(404).json({ message: 'Role not found' });
+    }
+
+    if (!role.can_create_media) {
+      return res.status(403).json({
+        message: 'You do not have permission to create media content',
+      });
+    }
+
+    const mediaContent = await createMediaContent(title, content, created_by);
+    res.status(201).json(mediaContent);
+  } catch (error) {
+    console.error('Error in createMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to create media content' });
+  }
+};
+
+export const getAllMediaContentsHandler = async (req, res) => {
+  try {
+    const mediaContents = await getAllMediaContents();
+    res.status(200).json(mediaContents);
+  } catch (error) {
+    console.error('Error in getAllMediaContentsHandler:', error.message);
+    res.status(500).json({ error: 'Failed to fetch media contents' });
+  }
+};
+
+export const getMediaContentByIdHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const mediaContent = await getMediaContentById(id);
+    if (!mediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(mediaContent);
+  } catch (error) {
+    console.error('Error in getMediaContentByIdHandler:', error.message);
+    res.status(500).json({ error: 'Failed to fetch media content' });
+  }
+};
+
+export const updateMediaContentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res
+        .status(400)
+        .json({ message: 'Title and content are required' });
+    }
+
+    const updatedMediaContent = await updateMediaContent(id, title, content);
+    if (!updatedMediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(updatedMediaContent);
+  } catch (error) {
+    console.error('Error in updateMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to update media content' });
+  }
+};
+
+export const deleteMediaContentHandler = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedMediaContent = await deleteMediaContent(id);
+    if (!deletedMediaContent) {
+      return res.status(404).json({ message: 'Media content not found' });
+    }
+
+    res.status(200).json(deletedMediaContent);
+  } catch (error) {
+    console.error('Error in deleteMediaContentHandler:', error.message);
+    res.status(500).json({ error: 'Failed to delete media content' });
+  }
+};
+```
+
+## Models
+
+### MediaModel
+```js
+import pool from '../config/db.js';
+
+export const createMediaContent = async (title, content, createdBy) => {
+  try {
+    const query = `
+      INSERT INTO media_contents (title, content, created_by, created_at) 
+      VALUES ($1, $2, $3, NOW()) 
+      RETURNING *`;
+    const values = [title, content, createdBy];
+    const result = await pool.query(query, values);
+    console.log('Media content successfully created:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error creating media content:', error.message);
+    throw error;
+  }
+};
+
+export const getAllMediaContents = async () => {
+  try {
+    const query = 'SELECT * FROM media_contents';
+    const result = await pool.query(query);
+    console.log('Fetched all media contents:', result.rows);
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching media contents:', error.message);
+    throw error;
+  }
+};
+
+export const getMediaContentById = async (id) => {
+  try {
+    const query = 'SELECT * FROM media_contents WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log('Fetched media content by ID:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error fetching media content by ID:', error.message);
+    throw error;
+  }
+};
+
+export const updateMediaContent = async (id, title, content) => {
+  try {
+    const query = `
+      UPDATE media_contents 
+      SET title = $1, content = $2 
+      WHERE id = $3 
+      RETURNING *`;
+    const values = [title, content, id];
+    const result = await pool.query(query, values);
+    console.log('Media content successfully updated:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating media content:', error.message);
+    throw error;
+  }
+};
+
+export const deleteMediaContent = async (id) => {
+  try {
+    const query = 'DELETE FROM media_contents WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+    console.log('Media content successfully deleted:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error deleting media content:', error.message);
+    throw error;
+  }
+};
+```
+
+### RoleModel
+```js
+import pool from '../config/db.js';
+
+export const createRole = async (name, canCreateMedia) => {
+  try {
+    const query =
+      'INSERT INTO roles (name, can_create_media) VALUES ($1, $2) RETURNING *';
+    const values = [name, canCreateMedia];
+    const result = await pool.query(query, values);
+    console.log('Role successfully created:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error creating role:', error.message);
+    throw error;
+  }
+};
+
+export const getAllRoles = async () => {
+  try {
+    const query = 'SELECT * FROM roles';
+    const result = await pool.query(query);
+    console.log('Fetched all roles:', result.rows);
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching roles:', error.message);
+    throw error;
+  }
+};
+
+export const getRoleById = async (id) => {
+  try {
+    const query = 'SELECT * FROM roles WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log('Fetched role by ID:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error fetching role by ID:', error.message);
+    throw error;
+  }
+};
+
+export const updateRole = async (id, name, canCreateMedia) => {
+  try {
+    const query =
+      'UPDATE roles SET name = $1, can_create_media = $2 WHERE id = $3 RETURNING *';
+    const values = [name, canCreateMedia, id];
+    const result = await pool.query(query, values);
+    console.log('Role updated successfully:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating role:', error.message);
+    throw error;
+  }
+};
+
+export const deleteRole = async (id) => {
+  try {
+    const query = 'DELETE FROM roles WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+    console.log('Role deleted successfully:', result.rows[0]);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error deleting role:', error.message);
+    throw error;
+  }
+};
+```
+
+### UserModel
+```js
+import pool from '../config/db.js';
+
+export const createUser = async (username, email, password, role_id) => {
+  try {
+    const query =
+      'INSERT INTO users (username, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING *';
+    const values = [username, email, password, role_id];
+
+    console.log('Creating user with data:', values);
+
+    const result = await pool.query(query, values);
+
+    console.log('User successfully created:', result.rows[0]); 
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error creating user:', error.message); 
+    throw error;
+  }
+};
+
+export const getAllUsers = async () => {
+  try {
+    const query = 'SELECT * FROM users';
+    const result = await pool.query(query);
+    console.log('Fetched all users:', result.rows);
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching users:', error.message); 
+    throw error;
+  }
+};
+
+export const getUserById = async (id) => {
+  try {
+    const query = 'SELECT * FROM users WHERE id = $1';
+    const result = await pool.query(query, [id]);
+    console.log('Fetched user by ID:', result.rows[0]); 
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error fetching user by ID:', error.message); 
+    throw error;
+  }
+};
+
+export const updateUser = async (id, username, email, role_id) => {
+  try {
+    const query = `
+      UPDATE users
+      SET username = $1, email = $2, role_id = $3
+      WHERE id = $4
+      RETURNING *`;
+    const values = [username, email, role_id, id];
+
+    console.log('Updating user with ID:', id, 'Data:', values); 
+
+    const result = await pool.query(query, values);
+
+    console.log('User updated successfully:', result.rows[0]); 
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating user:', error.message); 
+    throw error;
+  }
+};
+
+export const deleteUser = async (id) => {
+  try {
+    const query = 'DELETE FROM users WHERE id = $1 RETURNING *';
+    const result = await pool.query(query, [id]);
+
+    console.log('User deleted successfully:', result.rows[0]); 
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error deleting user:', error.message); 
+    throw error;
+  }
+};
+```
+
+
+
+
+
+
+
 
