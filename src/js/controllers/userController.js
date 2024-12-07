@@ -83,9 +83,19 @@ export const getUserByIdHandler = async (req, res) => {
 export const updateUserHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, id_role } = req.body;
+    const fieldsToUpdate = req.body;
 
-    const updatedUser = await updateUser(id, username, email, id_role);
+    // Check if at least one field is provided for updating
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'At least one field must be provided for update',
+        data: null,
+      });
+    }
+
+    // Call the updateUser model with dynamic fields
+    const updatedUser = await updateUser(id, fieldsToUpdate);
 
     if (!updatedUser) {
       return res.status(404).json({

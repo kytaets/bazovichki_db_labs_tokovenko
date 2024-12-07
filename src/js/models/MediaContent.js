@@ -40,21 +40,24 @@ export const getMediaContentById = async (id) => {
   }
 };
 
-export const updateMediaContent = async (id, title, content) => {
-  try {
-    const query = `
-      UPDATE media_contents 
-      SET title = $1, content = $2 
-      WHERE id = $3 
-      RETURNING *`;
-    const values = [title, content, id];
-    const result = await pool.query(query, values);
-    console.log('Media content successfully updated:', result.rows[0]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error updating media content:', error.message);
-    throw error;
+export const updateMediaContent = async (id, fieldsToUpdate) => {
+  const updates = [];
+  const values = [];
+  let counter = 1;
+
+  for (const [key, value] of Object.entries(fieldsToUpdate)) {
+    updates.push(`${key} = $${counter}`);
+    values.push(value);
+    counter++;
   }
+
+  const query = `UPDATE media_contents SET ${updates.join(
+    ', '
+  )} WHERE id = $${counter} RETURNING *`;
+  values.push(id);
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
 };
 
 export const deleteMediaContent = async (id) => {

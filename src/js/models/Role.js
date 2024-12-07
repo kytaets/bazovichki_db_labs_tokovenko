@@ -38,18 +38,24 @@ export const getRoleById = async (id) => {
   }
 };
 
-export const updateRole = async (id, name, canCreateMedia) => {
-  try {
-    const query =
-      'UPDATE roles SET name = $1, can_create_media = $2 WHERE id = $3 RETURNING *';
-    const values = [name, canCreateMedia, id];
-    const result = await pool.query(query, values);
-    console.log('Role updated successfully:', result.rows[0]);
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error updating role:', error.message);
-    throw error;
+export const updateRole = async (id, fieldsToUpdate) => {
+  const updates = [];
+  const values = [];
+  let counter = 1;
+
+  for (const [key, value] of Object.entries(fieldsToUpdate)) {
+    updates.push(`${key} = $${counter}`);
+    values.push(value);
+    counter++;
   }
+
+  const query = `UPDATE roles SET ${updates.join(
+    ', '
+  )} WHERE id = $${counter} RETURNING *`;
+  values.push(id);
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
 };
 
 export const deleteRole = async (id) => {

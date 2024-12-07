@@ -9,10 +9,10 @@ import {
 
 const router = express.Router();
 
-router.post('/', createMediaContentHandler); // Create media content
-router.get('/', getAllMediaContentsHandler); // Get all media contents
-router.get('/:id', getMediaContentByIdHandler); // Get media content by ID
-router.put('/:id', updateMediaContentHandler); // Update media content
-router.delete('/:id', deleteMediaContentHandler); // Delete media content
+router.post('/', createMediaContentHandler);
+router.get('/', getAllMediaContentsHandler);
+router.get('/:id', getMediaContentByIdHandler);
+router.patch('/:id', updateMediaContentHandler);
+router.delete('/:id', deleteMediaContentHandler);
 
 export default router;
