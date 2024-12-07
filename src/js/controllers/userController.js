@@ -6,90 +6,134 @@ import {
   deleteUser,
 } from '../models/User.js';
 
-// Controller for creating a new user
 export const createUserHandler = async (req, res) => {
   try {
-    const { username, email, password, role_id } = req.body;
+    const { username, email, password, id_role } = req.body;
 
-    if (!username || !email || !password || !role_id) {
+    if (!username || !email || !password || !id_role) {
       return res.status(400).json({
-        message: 'All fields (username, email, password, role_id) are required',
+        status: 'error',
+        message: 'All fields are required',
+        data: null,
       });
     }
 
-    const newUser = await createUser(username, email, password, role_id);
-    res.status(201).json(newUser);
+    const user = await createUser(username, email, password, id_role);
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully',
+      data: user,
+    });
   } catch (error) {
     console.error('Error creating user:', error.message);
-    res.status(500).json({ error: 'Failed to create user' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create user',
+      data: null,
+    });
   }
 };
 
-// Controller for retrieving all users
 export const getAllUsersHandler = async (req, res) => {
   try {
     const users = await getAllUsers();
-    res.status(200).json(users);
+    res.status(200).json({
+      status: 'success',
+      message: 'Users fetched successfully',
+      data: users,
+    });
   } catch (error) {
     console.error('Error fetching users:', error.message);
-    res.status(500).json({ error: 'Failed to fetch users' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch users',
+      data: null,
+    });
   }
 };
 
-// Controller for retrieving a single user by ID
 export const getUserByIdHandler = async (req, res) => {
   try {
     const { id } = req.params;
-
     const user = await getUserById(id);
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+        data: null,
+      });
     }
 
-    res.status(200).json(user);
+    res.status(200).json({
+      status: 'success',
+      message: 'User fetched successfully',
+      data: user,
+    });
   } catch (error) {
-    console.error('Error fetching user by ID:', error.message);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    console.error('Error fetching user:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch user',
+      data: null,
+    });
   }
 };
 
-// Controller for updating a user
 export const updateUserHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, role_id } = req.body;
+    const { username, email, id_role } = req.body;
 
-    if (!username || !email || !role_id) {
-      return res
-        .status(400)
-        .json({ message: 'Username, email, and role_id are required' });
-    }
+    const updatedUser = await updateUser(id, username, email, id_role);
 
-    const updatedUser = await updateUser(id, username, email, role_id);
     if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+        data: null,
+      });
     }
 
-    res.status(200).json(updatedUser);
+    res.status(200).json({
+      status: 'success',
+      message: 'User updated successfully',
+      data: updatedUser,
+    });
   } catch (error) {
     console.error('Error updating user:', error.message);
-    res.status(500).json({ error: 'Failed to update user' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to update user',
+      data: null,
+    });
   }
 };
 
-// Controller for deleting a user
 export const deleteUserHandler = async (req, res) => {
   try {
     const { id } = req.params;
-
     const deletedUser = await deleteUser(id);
+
     if (!deletedUser) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+        data: null,
+      });
     }
 
-    res.status(200).json(deletedUser);
+    res.status(200).json({
+      status: 'success',
+      message: 'User deleted successfully',
+      data: deletedUser,
+    });
   } catch (error) {
     console.error('Error deleting user:', error.message);
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete user',
+      data: null,
+    });
   }
 };
